@@ -6,10 +6,7 @@ import org.apache.logging.log4j.Logger;
 import ru.cinimex.exporter.Config;
 import ru.cinimex.exporter.mq.pcf.PCFElement;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -62,12 +59,7 @@ public class MQSubscriberManager {
         for (MQPCFSubscriber subscriber : pcfSubscribers) {
             subscriber.start();
         }
-        try {
-            this.queue = new MQMetricQueue(subscribers);
-        } catch (MQException e) {
-            logger.error("Error occurred during queue initialization: ", e);
-            System.exit(1);
-        }
+        this.queue = new MQMetricQueue(subscribers);
         queue.start();
         if (!subscribers.isEmpty()) {
             logger.info("Successfully launched {} topic subscribers!", subscribers.size());
@@ -84,15 +76,8 @@ public class MQSubscriberManager {
      * @throws InterruptedException
      */
     public void stopSubscribers() throws InterruptedException {
-        if (queue != null) {
-            queue.stopProcessing();
-        }
         if (executor != null) {
             executor.shutdown();
-        }
-
-        for (MQTopicSubscriber subscriber : subscribers) {
-            subscriber.stopProcessing();
         }
 
         for (MQPCFSubscriber subscriber : pcfSubscribers) {
@@ -100,6 +85,14 @@ public class MQSubscriberManager {
         }
         for (MQPCFSubscriber subscriber : pcfSubscribers) {
             subscriber.join(timeout);
+        }
+        for(MQTopicSubscriber subscriber : subscribers){
+            subscriber.stopProcessing();
+        }
+
+        if (queue != null) {
+            queue.stopProcessing();
+            queue.join(timeout);
         }
     }
 

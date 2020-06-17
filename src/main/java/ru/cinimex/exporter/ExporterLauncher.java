@@ -1,9 +1,7 @@
 package ru.cinimex.exporter;
 
-import com.ibm.mq.MQException;
-import com.ibm.mq.MQGetMessageOptions;
-import com.ibm.mq.MQMessage;
-import com.ibm.mq.MQTopic;
+import com.ibm.mq.*;
+import com.ibm.mq.constants.CMQC;
 import com.ibm.mq.constants.MQConstants;
 import com.ibm.mq.pcf.PCFMessage;
 import com.ibm.mq.pcf.PCFMessageAgent;
@@ -12,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import ru.cinimex.exporter.mq.MQConnection;
 import ru.cinimex.exporter.mq.MQObject;
 import ru.cinimex.exporter.mq.MQSubscriberManager;
+import ru.cinimex.exporter.mq.MQTopicSubscriber;
 import ru.cinimex.exporter.mq.pcf.PCFClass;
 import ru.cinimex.exporter.mq.pcf.PCFDataParser;
 import ru.cinimex.exporter.mq.pcf.PCFElement;
@@ -71,6 +70,7 @@ public class ExporterLauncher {
      * @return - array, filled with metrics headers.
      */
     private static ArrayList<PCFElement> getAllPublishedMetrics(Config config) {
+        List<MQTopic> topics = new ArrayList<>();
         MQTopic topic = null;
         ArrayList<PCFElement> elements = new ArrayList<>();
         MQGetMessageOptions gmo = new MQGetMessageOptions();
@@ -79,18 +79,21 @@ public class ExporterLauncher {
         try {
             String qmgrName = config.getQmgrName();
             topic = MQConnection.createTopic(String.format(TOPIC_STRING, qmgrName));
+            topics.add(topic);
             MQMessage msg = getEmptyMessage();
             topic.get(msg, gmo);
             PCFMessage pcfResponse = new PCFMessage(msg);
             List<PCFClass> classes = PCFDataParser.getPCFClasses(pcfResponse);
             for (PCFClass pcfClass : classes) {
                 topic = MQConnection.createTopic(pcfClass.getTopicString());
+                topics.add(topic);
                 msg = getEmptyMessage();
                 topic.get(msg, gmo);
                 pcfResponse = new PCFMessage(msg);
                 List<PCFType> types = PCFDataParser.getPCFTypes(pcfResponse);
                 for (PCFType type : types) {
                     topic = MQConnection.createTopic(type.getTopicString());
+                    topics.add(topic);
                     msg = getEmptyMessage();
                     topic.get(msg, gmo);
                     pcfResponse = new PCFMessage(msg);
@@ -102,11 +105,15 @@ public class ExporterLauncher {
             logger.error("Failed!", e);
         } finally {
             try {
-                if (topic != null && topic.isOpen()) {
-                    topic.close();
+                logger.trace("Closing {} topics.", topics.size());
+                for(MQTopic openedTopic : topics) {
+                    if (openedTopic != null && openedTopic.isOpen()) {
+                        openedTopic.close();
+                        logger.trace("Topic {} successfully closed.", openedTopic.getName());
+                    }
                 }
             } catch (MQException e) {
-                logger.error("Error occurred during disconnecting from topic {}. Error: ", topic.toString(), e);
+                logger.error("Error occurred during disconnecting from topic {}. Error: ", "UNKNOWN", e);
             }
         }
         return elements;

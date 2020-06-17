@@ -139,7 +139,9 @@ public class MQConnection {
      */
     public static MQTopic createSpecificTopic(String topic) throws MQException {
         try {
-            return queueManager.accessTopic(getQueue(), topic, "", CMQC.MQSO_CREATE);
+           MQTopic topicObject =  queueManager.accessTopic(getQueue(), topic, "", CMQC.MQSO_CREATE | CMQC.MQSO_NON_DURABLE);
+           topicObject.setCloseOptions(CMQC.MQCO_IMMEDIATE);
+           return topicObject;
         } catch (MQException e) {
             if (e.getReason() == MQConstants.MQRC_HANDLE_NOT_AVAILABLE) {
                 logger.error("The maximum number of open handles allowed for the current task has already been reached. Please, increase the MaxHandles queue manager attribute or reduce the number of queues to monitor: ", e);
@@ -163,7 +165,7 @@ public class MQConnection {
     }
 
     private static void createDynamicQueue() throws MQException {
-        dynamicQueue = queueManager.accessQueue("SYSTEM.NDURABLE.MODEL.QUEUE", CMQC.MQOO_INPUT_AS_Q_DEF | CMQC.MQOO_FAIL_IF_QUIESCING, null, "MQEXPORTER.*", null);
+        dynamicQueue = queueManager.accessQueue("SYSTEM.NDURABLE.MODEL.QUEUE", CMQC.MQOO_INPUT_AS_Q_DEF | CMQC.MQOO_FAIL_IF_QUIESCING | CMQC.MQOO_INQUIRE | CMQC.MQOT_Q, null, "MQEXPORTER.*", null);
     }
 
     /**

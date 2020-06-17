@@ -45,6 +45,7 @@ public class MQTopicSubscriber implements MQSubscriber {
     public void stopProcessing() {
         if (topic != null && topic.isOpen()) {
             try {
+                topic.getSubscriptionReference().close();
                 topic.close();
             } catch (MQException e) {
                 logger.warn("Unable to close topic gracefully: {}", e.getMessage());

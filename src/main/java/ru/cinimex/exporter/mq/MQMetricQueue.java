@@ -17,18 +17,15 @@ import java.util.List;
 public class MQMetricQueue extends Thread implements MQSubscriber {
     private static final Logger logger = LogManager.getLogger(MQMetricQueue.class);
     private List<MQTopicSubscriber> subscribers;
-    private MQQueue queue;
     private boolean isRunning;
 
     /**
      * MQMetricQueue constructor.
      *
      * @param subscribers - subscribers list. Each message, received from queue, contains custom metrics. They are passed to related subscriber, who knows how to handle them.
-     * @throws MQException - MQ exception, which contains mqrc error code. More info <a href="https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.0.0/com.ibm.mq.javadoc.doc/WMQJMSClasses/com/ibm/mq/MQException.html">here</a>.
      */
-    public MQMetricQueue(List<MQTopicSubscriber> subscribers) throws MQException {
+    public MQMetricQueue(List<MQTopicSubscriber> subscribers) {
         this.subscribers = subscribers;
-        this.queue = MQConnection.getQueue();
     }
 
     @Override
@@ -40,7 +37,7 @@ public class MQMetricQueue extends Thread implements MQSubscriber {
         while (isRunning) {
             MQMessage msg = new MQMessage();
             try {
-                queue.get(msg, gmo);
+                MQConnection.getQueue().get(msg, gmo);
                 String name = msg.getStringProperty("mqps.Top");
                 MQTopicSubscriber sub = subscribers.stream().filter(subscriber -> name.equals(subscriber.getTopicName())).findFirst().orElse(null);
                 if (sub != null) {
